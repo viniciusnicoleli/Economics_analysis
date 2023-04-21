@@ -28,6 +28,7 @@ df_feat <- df_feat %>% select('Co.Curso','Nt.Ger','Nt.Fg','Co.Modalidade',
                               'Qe.I01','Qe.I02','Qe.I03','Qe.I11','Qe.I15',
                               'Qe.I23','Qe.I17','Qe.I18')
 
+str(df_feat)
 dim(df_feat)
 
 # Renomeando elas:
@@ -35,7 +36,6 @@ dim(df_feat)
 df_feat <- df_feat %>% rename('Codigo_curso' = 'Co.Curso', 
                               'Nota_geral' = 'Nt.Ger',
                               'Nota_form_geral' = 'Nt.Fg',
-                              'EAD' = 'Co.Modalidade',
                               'Curso_grupo' = 'Co.Grupo',
                               'Estado_curso' = 'Co.Uf.Curso',
                               'Idade' = 'Nu.Idade',
@@ -50,17 +50,24 @@ df_feat <- df_feat %>% rename('Codigo_curso' = 'Co.Curso',
                               'Politicas_inclusao_facul' = 'Qe.I15',
                               'Esforco_aluno' = 'Qe.I23',
                               'Tipo_ensino_medio' = 'Qe.I17',
-                              'Modalidade_ensino_medio' = 'Qe.I18')
+                              'Modalidade_ensino_medio' = 'Qe.I18',
+                              'EAD' = 'Co.Modalidade')
+
+View(df_feat)
 
 colnames(df_feat)
-
 # --------------------
 
 # Retirando os NA's
 
 df_feat <- df_feat[df_feat$'Nota_geral' != '',]
+df_feat <- df_feat[df_feat$Tipo_presenca_prova != 222,]
+df_feat$Nota_geral <- str_replace(df_feat$Nota_geral, ",",".") 
 
-df_feat <- df_feat[complete.cases(df_feat),]
+help(replace)
+View(df_feat)
+
+#df_feat <- df_feat[complete.cases(df_feat),]
 
 summary(df_feat)
 # --------------------
@@ -70,7 +77,6 @@ dim(df_feat)
 str(df_feat)
 
 df_feat$Nota_geral <- as.numeric(df_feat$Nota_geral)
-df_feat$Nota_form_geral <- as.numeric(df_feat$Nota_form_geral)
 
 df_feat$Estado_civil <- as.factor(df_feat$Estado_civil)
 df_feat$Raça <- as.factor(df_feat$Raça)
@@ -82,20 +88,17 @@ df_feat$Modalidade_ensino_medio <- as.factor(df_feat$Modalidade_ensino_medio)
 df_feat$Programa_governo_facul <- as.factor(df_feat$Programa_governo_facul)
 df_feat$Politicas_inclusao_facul <- as.factor(df_feat$Politicas_inclusao_facul)
 
+str(df_feat)
 colnames(df_feat)
-
 # --------------------
-
-hist(df_feat$Nota_geral)
 
 # Rodando primeiro modelo:
 
-df_model <- df_feat %>% select(-c(Curso_grupo,Codigo_curso,Nota_form_geral,
-                                  Tipo_presenca_prova,Modalidade_ensino_medio,
-                                  Tipo_presenca_geral,Tipo_ensino_medio,
-                                  Nacionalidade))
+df_model <- df_feat %>% select(-c(Curso_grupo,Codigo_curso,Nota_form_geral))
 
-str(df_model)
+
+df_model <- df_model[df_model$Estado_civil != '',]
+df_model <- df_model[df_model$Nota_geral > 0,]
 
 
 library(ggcorrplot)
@@ -103,11 +106,13 @@ model.matrix(~0+., data=df_model) %>%
   cor(use="pairwise.complete.obs") %>% 
   ggcorrplot(show.diag=FALSE, type="lower", lab=TRUE, lab_size=2)
 
+help(ggcorrplot)
 
 library(lme4)
 
 colnames(df_model)
 hist(df_model$Nota_geral)
+
 modelm <- glmer(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
              + Raça + Estado_civil + Programa_governo_facul + EAD + Idade 
              + Politicas_inclusao_facul
@@ -117,7 +122,7 @@ modelm <- glmer(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao
 modelm2 <- glm(formula = Nota_geral ~ Estado_civil + Turno_graduacao 
                  + Raça + Estado_civil + Programa_governo_facul + EAD + Idade 
                  + Politicas_inclusao_facul
-                 + Esforco_aluno,data = df_model,family = gaussian)
+                 + Esforco_aluno,data = df_model,family = Gamma())
 
 summary(modelm2)
 
