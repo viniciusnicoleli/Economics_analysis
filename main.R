@@ -1,8 +1,8 @@
 library('tidyverse')
 library('readxl')
 library('plm')
-
-setwd("C:\\Users\\vinic\\Documents\\Projetos\\emilly_work")
+install.packages('plm')
+setwd("C:\\Users\\Dell\\Documents\\GitHub\\emilly_work")
 
 
 # Coletando os dados:
@@ -64,11 +64,21 @@ df_feat <- df_feat[df_feat$'Nota_geral' != '',]
 df_feat <- df_feat[df_feat$Tipo_presenca_prova != 222,]
 df_feat$Nota_geral <- str_replace(df_feat$Nota_geral, ",",".") 
 
-help(replace)
-View(df_feat)
+str(df_feat)
+count(df_feat, Estado_civil, sort = TRUE)
+
+df_feat <- df_feat[df_feat$Estado_civil != '',]
+df_feat <- df_feat[df_feat$Raça != '',]
+df_feat <- df_feat[df_feat$Nacionalidade != '',]
+df_feat <- df_feat[df_feat$Programa_governo_facul != '',]
+df_feat <- df_feat[df_feat$Politicas_inclusao_facul != '',]
+df_feat <- df_feat[df_feat$Esforco_aluno != '',]
+df_feat <- df_feat[df_feat$Tipo_ensino_medio != '',]
+df_feat <- df_feat[df_feat$Modalidade_ensino_medio != '',]
+count(df_feat, Estado_civil, sort = TRUE)
 
 #df_feat <- df_feat[complete.cases(df_feat),]
-
+row.names(df_feat) <- NULL
 summary(df_feat)
 # --------------------
 # Transformando as variáveis corretamente:
@@ -87,6 +97,8 @@ df_feat$Tipo_ensino_medio <- as.factor(df_feat$Tipo_ensino_medio)
 df_feat$Modalidade_ensino_medio <- as.factor(df_feat$Modalidade_ensino_medio)
 df_feat$Programa_governo_facul <- as.factor(df_feat$Programa_governo_facul)
 df_feat$Politicas_inclusao_facul <- as.factor(df_feat$Politicas_inclusao_facul)
+df_feat$Turno_graduacao <- as.factor(df_feat$Turno_graduacao)
+df_feat$EAD <- as.factor(df_feat$EAD)
 
 str(df_feat)
 colnames(df_feat)
@@ -96,8 +108,6 @@ colnames(df_feat)
 
 df_model <- df_feat %>% select(-c(Curso_grupo,Codigo_curso,Nota_form_geral))
 
-
-df_model <- df_model[df_model$Estado_civil != '',]
 df_model <- df_model[df_model$Nota_geral > 0,]
 
 
@@ -112,6 +122,18 @@ library(lme4)
 
 colnames(df_model)
 hist(df_model$Nota_geral)
+
+modelk <- lm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
+             + Raça + Estado_civil + Idade + EAD 
+             + Esforco_aluno
+             + Tipo_ensino_medio
+             + Estado_curso
+             + Nacionalidade
+             + Sexo
+             + Modalidade_ensino_medio,data = df_model)
+
+summary(modelk)
+
 
 modelm <- glmer(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
              + Raça + Estado_civil + Programa_governo_facul + EAD + Idade 
@@ -138,7 +160,7 @@ head(df_model)
 
 modelm <- plm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao +
                Raça + Estado_civil + Programa_governo_facul + EAD + Idade + Politicas_inclusao_facul
-             + Esforco_aluno,data = df_model,model='within',index=Programa_governo_facul)
+             + Esforco_aluno,data = df_model,model='within',index=(Programa_governo_facul))
 
 modelm <- plm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao +
                 Raça + Estado_civil + Programa_governo_facul + EAD + Idade + Politicas_inclusao_facul
