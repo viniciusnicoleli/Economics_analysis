@@ -1,7 +1,8 @@
 library('tidyverse')
 library('readxl')
 library('plm')
-install.packages('plm')
+library('AER')
+install.packages('AER')
 setwd("C:\\Users\\Dell\\Documents\\GitHub\\emilly_work")
 
 
@@ -123,6 +124,54 @@ library(lme4)
 colnames(df_model)
 hist(df_model$Nota_geral)
 
+# Endogenous - Variáveis Causais = EAD. 
+# Instruments - Arrumam o vicio das variáveis Endogenas Esforco_aluno, turno_graduacao
+
+# modelo basico lm
+# modelo ivreg 
+# modelo ivreg 2
+# modelok
+
+modelbasic <- lm(Nota_geral ~ EAD, data=df_model) ; summary(modelbasic)
+
+ivreg1 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil 
+               + Raça
+               + Idade
+               + Tipo_ensino_medio
+               + Estado_curso
+               + Nacionalidade
+               + Sexo
+               + Modalidade_ensino_medio | Estado_civil 
+               + Raça
+               + Idade
+               + Tipo_ensino_medio
+               + Estado_curso
+               + Nacionalidade
+               + Sexo
+               + Modalidade_ensino_medio + Esforco_aluno, data = df_model)
+
+summary(ivreg1, diagnostics = TRUE)
+help(summary)
+
+ivreg2 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil 
+                + Raça
+                + Idade
+                + Tipo_ensino_medio
+                + Estado_curso
+                + Nacionalidade
+                + Sexo
+                + Modalidade_ensino_medio | Estado_civil 
+                + Raça
+                + Idade
+                + Tipo_ensino_medio
+                + Estado_curso
+                + Nacionalidade
+                + Sexo
+                + Modalidade_ensino_medio + Esforco_aluno + Turno_graduacao, data = df_model)
+
+summary(ivreg2, diagnostics = TRUE)
+
+
 modelk <- lm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
              + Raça + Estado_civil + Idade + EAD 
              + Esforco_aluno
@@ -134,48 +183,3 @@ modelk <- lm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao
 
 summary(modelk)
 
-
-modelm <- glmer(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
-             + Raça + Estado_civil + Programa_governo_facul + EAD + Idade 
-             + Politicas_inclusao_facul
-             + Esforco_aluno,data = df_model,
-             family = 'beta')
-
-modelm2 <- glm(formula = Nota_geral ~ Estado_civil + Turno_graduacao 
-                 + Raça + Estado_civil + Programa_governo_facul + EAD + Idade 
-                 + Politicas_inclusao_facul
-                 + Esforco_aluno,data = df_model,family = Gamma())
-
-summary(modelm2)
-
-help(glm)
-help(plm)
-summary(modelm)
-# -----------------------------------------------------------------------------
-df_model <- tibble::rowid_to_column(df_model, "ID")
-head(df_model)
-
-
-
-
-modelm <- plm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao +
-               Raça + Estado_civil + Programa_governo_facul + EAD + Idade + Politicas_inclusao_facul
-             + Esforco_aluno,data = df_model,model='within',index=(Programa_governo_facul))
-
-modelm <- plm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao +
-                Raça + Estado_civil + Programa_governo_facul + EAD + Idade + Politicas_inclusao_facul
-              + Esforco_aluno,data = df_model,model='random',index=)
-
-
-
-
-model0 <- plm(df_model$'Nota_geral' ~ ., data = df_model,na.action = na.omit,model = 'within')
-
-model1 <- plm(df_model$'Nota_geral' ~ ., data = df_model,na.action = na.omit,model = 'random')
-
-phtest(modelm,model1)
-
-summary(model0)
-anova(model0)
-
-help(plm)
