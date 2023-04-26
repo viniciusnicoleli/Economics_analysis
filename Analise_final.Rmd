@@ -1,0 +1,207 @@
+---
+title: "Econometria - Trab"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Trabalho
+
+Utilizamos os pacotes Tidyverse e readxl para melhor atender a demanda de coletar a base de dados o maior desafio aqui foi identificar o fileEncoding da base, veremos futuramente a grande ausência de dados que possui nessa base.
+
+```{r, echo=TRUE}
+library('tidyverse')
+library('readxl')
+
+df2 <- read.csv(file = "microdados_enade_2018econ.csv",fileEncoding = 'UTF-16LE',sep = '\t')
+```
+
+Abaixo o nome das colunas
+
+```{r, echo=FALSE}
+colnames(df2)
+```
+
+Realizamos abaixo a filtragem apenas dos estudantes dos grupos de Economia, essa informação foi obtida no dicionário que acompanha os dados, mas também pode ser obtida no ENADE.
+
+```{r, echo=TRUE}
+df_feat <- df2[df2['Co.Grupo']==13,]
+```
+
+Abaixo Selecionamos as variáveis que mais são importantes para a modelagem como nos e o enunciado do Professor sugeriu, para iniciar podemos notar a presença de Nt.Ger que é a nota geral do estudante. Uma visão superficial, trouxemos turno da graduação, idade, sexo, Estado do curso além de perguntas sobre os indivíduos que fizeram a prova. Para tal, utilizamos a função select, que faz a seleção das variáveis que estão contidas na pré seleção que fizemos dos dados que são do grupo de Economia.
+
+```{r, echo=TRUE}
+df_feat <- df_feat %>% select('Co.Curso','Nt.Ger','Nt.Fg','Co.Modalidade',
+                              'Co.Grupo','Co.Uf.Curso','Nu.Idade','Tp.Sexo',
+                              'Co.Turno.Graduacao','Tp.Pres','Tp.Pr.Ger',
+                              'Qe.I01','Qe.I02','Qe.I03','Qe.I11','Qe.I15',
+                              'Qe.I23','Qe.I17','Qe.I18')
+```
+
+Abaixo, nos estamos renomeando as variáveis de maneira que sua usabilidade seja mais fácil e compreensível durante as modelagens.
+
+```{r, echo=TRUE}
+df_feat <- df_feat %>% rename('Codigo_curso' = 'Co.Curso', 
+                              'Nota_geral' = 'Nt.Ger',
+                              'Nota_form_geral' = 'Nt.Fg',
+                              'Curso_grupo' = 'Co.Grupo',
+                              'Estado_curso' = 'Co.Uf.Curso',
+                              'Idade' = 'Nu.Idade',
+                              'Sexo' = 'Tp.Sexo',
+                              'Turno_graduacao' = 'Co.Turno.Graduacao',
+                              'Tipo_presenca_prova' = 'Tp.Pres',
+                              'Tipo_presenca_geral' = 'Tp.Pr.Ger',
+                              'Estado_civil' ='Qe.I01',
+                              'Raça' = 'Qe.I02',
+                              'Nacionalidade' = 'Qe.I03',
+                              'Programa_governo_facul' = 'Qe.I11',
+                              'Politicas_inclusao_facul' = 'Qe.I15',
+                              'Esforco_aluno' = 'Qe.I23',
+                              'Tipo_ensino_medio' = 'Qe.I17',
+                              'Modalidade_ensino_medio' = 'Qe.I18',
+                              'EAD' = 'Co.Modalidade')
+```
+
+Portanto após essas modificações seguimos com a ideia do trabalho.
+
+Selecionamos como "variável de interesse" que o Próprio senhor, Professor de ensino superior Flavio, indicou como a variável endógena, por mais que a literatura atual trate a variável de interesse como a variável resposta, tivemos que mudar os conceitos referentes a isso. Portanto escolhermos se o indivíduo que realizou a prova estudou ou não numa instituição onde o curso ofertado de Ciências Econômicas era realizado à distância, essa variável pode ser indicada como "EAD", gostaríamos de testar a mesma, pois como se trata de um período antes da pandemia, seria interessante analisar se existia um impacto da mesma em relação a nota, que se fosse identificada, nós, poderíamos ter um bom questionamento quanto à educação ser realizada a distância, da mesma forma que foi na UFPR durante os anos de 2020, 2021. Ficamos instigados à resolver esse questionamento, portanto, o uso da mesma.
+
+Para as variáveis independentes que compõem o estudo, selecionamos variáveis como Idade, Sexo, entre outras relacionadas ao ensino do indivíduo, que portanto não deveriam ser ignoradas como no próprio enunciado do trabalho retratava isso, destaque para Turno da graduação e o tipo de presença de prova, das quais vamos comentar agora mesmo.
+
+Observando mais de perto percebemos que pouquíssimas Instituições ofertavam EAD, pelo menos da base de dados que possuímos ao nosso dispor, lembrando da filtragem que realizamos para obter apenas alunos de Economia, dos indivíduos que a base nos oferece, apenas 100 realizaram os estudos à distância. Isso impacta e muito na predição do modelo, dado o desbalanceamento, mas como nesse caso estamos focados na Inferência, seguimos em frente, pois respondemos sobre o balanceamento dos grupos.
+
+```{r, echo=TRUE}
+count(df_feat, EAD, sort = TRUE)
+```
+
+Para realizar a Analise, tivemos que primeiramente adaptar as variáveis para tal, isso significa, tornar as variáveis capazes de serem fitadas em um modelo, para isso, decidimos seguir em alguns passos.
+
+1º Retirar dados faltantes de notas
+2º Através da variável tipo_presenca_prova, aonde o código 222 é identificado como alguém que não participou da prova, descartamos do banco de dados
+3º Substituimos os valores decimals que possuem , para . 
+
+O terceiro ponto é para fins de reformular a variável.
+Veja abaixo via feedback do codigo em R, como fazemos isso com quase todas as variáveis que vamos identificar com as.facotr, para fins de modelagem.
+
+
+```{r, echo=TRUE}
+df_feat <- df_feat[df_feat$'Nota_geral' != '',]
+df_feat <- df_feat[df_feat$Tipo_presenca_prova != 222,]
+df_feat$Nota_geral <- str_replace(df_feat$Nota_geral, ",",".") 
+df_feat <- df_feat[df_feat$Estado_civil != '',]
+df_feat <- df_feat[df_feat$Raça != '',]
+df_feat <- df_feat[df_feat$Nacionalidade != '',]
+df_feat <- df_feat[df_feat$Programa_governo_facul != '',]
+df_feat <- df_feat[df_feat$Politicas_inclusao_facul != '',]
+df_feat <- df_feat[df_feat$Esforco_aluno != '',]
+df_feat <- df_feat[df_feat$Tipo_ensino_medio != '',]
+df_feat <- df_feat[df_feat$Modalidade_ensino_medio != '',]
+```
+
+E finalmente temos por fim, a transformação das variáveis para que possamos fitar um modelo apropriado, veja que fazemos com que variáveis categóricas sejam factor e outras que são numéricas adotamos o numeric, fazemos isso para o modelo se adequar corretamente, portanto com essas atualizações, seguimos em direção a modelagem e análise de diagnóstico.
+
+```{r, echo=TRUE}
+df_feat$Nota_geral <- as.numeric(df_feat$Nota_geral)
+df_feat$Estado_civil <- as.factor(df_feat$Estado_civil)
+df_feat$Raça <- as.factor(df_feat$Raça)
+df_feat$Sexo <- as.factor(df_feat$Sexo)
+df_feat$Nacionalidade <- as.factor(df_feat$Nacionalidade)
+df_feat$Esforco_aluno <- as.factor(df_feat$Esforco_aluno)
+df_feat$Tipo_ensino_medio <- as.factor(df_feat$Tipo_ensino_medio)
+df_feat$Modalidade_ensino_medio <- as.factor(df_feat$Modalidade_ensino_medio)
+df_feat$Programa_governo_facul <- as.factor(df_feat$Programa_governo_facul)
+df_feat$Politicas_inclusao_facul <- as.factor(df_feat$Politicas_inclusao_facul)
+df_feat$Turno_graduacao <- as.factor(df_feat$Turno_graduacao)
+df_feat$EAD <- as.factor(df_feat$EAD)
+```
+
+Durante os trabalhos, fitamos muitos modelos, muitos mesmo! E a sua performance estava relativamente estranha, através de um gráfico de correlação, podemos investigar mais a fundo algumas características de dependência entre os dados, para isso, utilizamos os codings abaixo.
+
+Notamos apenas uma grande correlação na variável Sexo, que pode causar o problema, mas a causalidade dela não pode ser irrelevante.
+
+```{r, echo=FALSE}
+df_model <- df_feat %>% select(-c(Curso_grupo,Codigo_curso,Nota_form_geral))
+df_model <- df_model[df_model$Nota_geral > 0,]
+library(ggcorrplot)
+model.matrix(~0+., data=df_model) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag=FALSE, type="lower", lab=TRUE, lab_size=2)
+```
+
+Para seguirmos com a Analise Diagnóstico, eu estou retirando o grupo do curso, o código do curso e a nota_form_geral, são variáveis que na nossa visão são inuteis para a compreensão da Nota Geral, dado que a base já esta filtrada e a Nota_form_geral não é a nossa variável Y.
+
+```{r, echo=TRUE}
+df_model <- df_feat %>% select(-c(Curso_grupo,Codigo_curso,Nota_form_geral))
+df_model <- df_model[df_model$Nota_geral > 0,]
+```
+
+## Modelagem
+
+Abaixo construímos um modelo, super simples para explicar como o vício pode estar contido em um modelo tão simples quanto esse, portanto isso nos motiva a utilizar o teste de Hausman e Sargan para identificar a utilização de variáveis instrumentais afim de validarmos se a variável de interesse indicada por EAD, está com problemas de vício e se devemos optar por um modelo OLS ou um modelo baseado na utilização de variáveis instrumentais, dessa forma seguimos com a análise utilizando os testes de Hausman e Sargan.
+
+Portanto testamos se é Endógeno e se os instrumentos e sua utilização estão corretos (Teste de Sargan).
+
+```{r, echo=TRUE}
+modelbasic <- lm(Nota_geral ~ EAD, data=df_model) ; summary(modelbasic)
+```
+
+Abaixo utilizamos a função ivreg, essa função consegue através do seu summary apresentar os resultados do teste de Sargan e Hausman, da qual vamos interpretar agora.
+
+Note que o Weak Instruments, é o teste em que checamos se o instrumento escolhido que nesse caso é a variável Esforço_aluno é um bom instrumento para definir a resposta baseado no EAD, da qual porque rejeitamos esta hipotense em Weak Instruments, podemos dizer que é um instrumento suficiente e ideal para essa explicação.
+
+Já no teste de Hausman testamos se o modelo OLS e o modelo IVreg são similares, se sim, não rejeitamos a hipótese e optamos pelo de OLS, mas como nesse caso estamos rejeitamos, devemos escolher o modelo de IVreg, portanto descartando o modelo que adota métodos fixos.
+
+Já o teste de Sargan apresentou que as variáveis de instrumentos, ou melhor a variável instrumental que escolhemos, não está causando problemas dentro do modelo, me refiro a estarmos causando um sobre ajuste, que seria indicada se o teste fosse significativo.
+
+```{r, echo=TRUE}
+library('AER')
+ivreg1 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil 
+               + Raça
+               + Idade
+               + Tipo_ensino_medio
+               + Estado_curso
+               + Nacionalidade
+               + Sexo
+               + Modalidade_ensino_medio | Estado_civil 
+               + Raça
+               + Idade
+               + Tipo_ensino_medio
+               + Estado_curso
+               + Nacionalidade
+               + Sexo
+               + Modalidade_ensino_medio + Esforco_aluno, data = df_model)
+
+summary(ivreg1, diagnostics = TRUE)
+```
+
+Como um bonus do trabalho, testamos diversos modelos, mas o mais interessante se deu com a adição de outra variável instrumental, forçando o teste de Sargan apontar que estamos sobre ajustando com as variáveis instrumentais e que devemos retirar alguma para evitar tal problema, nesse caso a variável adicionada deve ser retirada e mantida apenas a que se provou ser um ajuste aceitável
+
+```{r, echo=TRUE}
+ivreg2 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil 
+                + Raça
+                + Idade
+                + Tipo_ensino_medio
+                + Estado_curso
+                + Nacionalidade
+                + Sexo
+                + Modalidade_ensino_medio | Estado_civil 
+                + Raça
+                + Idade
+                + Tipo_ensino_medio
+                + Estado_curso
+                + Nacionalidade
+                + Sexo
+                + Modalidade_ensino_medio + Esforco_aluno + Turno_graduacao, data = df_model)
+
+summary(ivreg2, diagnostics = TRUE)
+```
+
+Portanto adotamos o modelo IVreg1 para adequar o ajuste da Nota Geral utilizando a variável EAD e como variáveis instrumentais, o Esforço do aluno, que é uma variável que é questionada ao indivíduo que fez a prova quanto tempo ele estudava.
+
+```{r, echo=TRUE}
+summary(ivreg2, diagnostics = TRUE)
+```
+
+Dessa maneira existe sim o efeito de EAD na resposta, o valor estimado, pode ser identificado como um problema com o desbalanceamento do nível da classificação do EAD, da qual a resposta pode tender apenas a um lado da resposta, mas como a variável apresenta efeito, entendemos dessa forma.
+
+Uma sugestão para a melhoria desse modelo, seria o desbalanceamento correto dessa variável, afim de poder se utilizar da mesma para fins futuros, ou a troca por uma análise de um programa que se apresente mais significativo e que possua características mais sólidas, portanto utilizamos das técnicas estatísticas que possuíamos para realizar tal análise e a obtenção do modelo é apenas um reflexo do que a base de Dados apresenta de informação ou variância. Durante a análise acoplamos as informações solicitadas pelo professor.

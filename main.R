@@ -76,7 +76,7 @@ df_feat <- df_feat[df_feat$Politicas_inclusao_facul != '',]
 df_feat <- df_feat[df_feat$Esforco_aluno != '',]
 df_feat <- df_feat[df_feat$Tipo_ensino_medio != '',]
 df_feat <- df_feat[df_feat$Modalidade_ensino_medio != '',]
-count(df_feat, Estado_civil, sort = TRUE)
+count(df_feat, EAD, sort = TRUE)
 
 #df_feat <- df_feat[complete.cases(df_feat),]
 row.names(df_feat) <- NULL
@@ -134,6 +134,14 @@ hist(df_model$Nota_geral)
 
 modelbasic <- lm(Nota_geral ~ EAD, data=df_model) ; summary(modelbasic)
 
+
+# Utilizamos o ivreg1 porque o teste de Wu-Hausman foi significativo, 
+# portanto à diferenças nas estimativas.
+
+# Os instrumentos utilizados no ivreg foram satisfatórios.
+
+
+
 ivreg1 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil 
                + Raça
                + Idade
@@ -171,6 +179,7 @@ ivreg2 <- ivreg(df_model$Nota_geral ~ EAD + Estado_civil
 
 summary(ivreg2, diagnostics = TRUE)
 
+ivreg
 
 modelk <- lm(df_model$'Nota_geral' ~ Estado_civil + Turno_graduacao 
              + Raça + Estado_civil + Idade + EAD 
